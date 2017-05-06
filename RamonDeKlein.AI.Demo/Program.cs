@@ -3,22 +3,16 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.ApplicationInsights.Extensibility;
 
-namespace TelemetryTest
+namespace RamonDeKlein.AI.Demo
 {
     public class Program
     {
-        private static readonly TelemetryClient TelemetryClient = new TelemetryClient();
+        private static readonly TelemetryClient TelemetryClient = InitializeTelemetryClient();
 
         public static int Main(string[] args)
         {
-            // IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
-            //
-            // Make sure you replace your instrumentation key to point to your
-            // own Application Insights resource, otherwise you won't be able
-            // to see your telemetry.
-            //
-            // IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT IMPORTANT
             try
             {
                 // Run a bunch of parallel operations to simulate some load
@@ -31,6 +25,38 @@ namespace TelemetryTest
                 // don't use a channel that uses some kind of persistency.
                 TelemetryClient.Flush();
             }
+        }
+
+        private static TelemetryClient InitializeTelemetryClient()
+        {
+            // Create a custom telemetry configuration. Normally you would load
+            // the configuration from "ApplicationInsights.config", but this
+            // doesn't work for .NET Core :-(
+            var telemetryConfiguration = new TelemetryConfiguration();
+
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            // !!! REPLACE WITH YOUR OWN INSTRUMENTATION KEY !!!
+            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            telemetryConfiguration.InstrumentationKey = /*"00000000-0000-0000-0000-000000000000"*/;
+
+            // Add the telemetry initializers that links telemetry to
+            // the current operation.
+            telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
+
+            // Build the telemetry processor chain
+            telemetryConfiguration.TelemetryProcessorChainBuilder
+                .Use(next => new OperationFilterProcessor(next)
+                {
+                    AlwaysLogExceptions = true,
+                    AlwaysLogFailedDependencies = true,
+                    AlwaysTraceDependencyWithDuration = TimeSpan.FromMilliseconds(250),
+                    MinAlwaysTraceLevel = SeverityLevel.Warning,
+                    IncludeOperationLessTelemetry = true
+                })
+                .Build();
+
+            // Create the telemetry client
+            return new TelemetryClient(telemetryConfiguration);
         }
 
         private static Task RunTasks(int taskCount)
@@ -81,8 +107,8 @@ namespace TelemetryTest
             var startTime = DateTimeOffset.UtcNow;
             try
             {
-                // Wait between 0 and 200ms
-                await Task.Delay(new Random(taskIndex).Next(200));
+                // Wait between 0 and 10ms
+                await Task.Delay(new Random(taskIndex).Next(10));
 
                 // Every 10th operation fails
                 if (taskIndex % 10 == 0)

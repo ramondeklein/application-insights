@@ -1,20 +1,34 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net40;net45;netstandard1.3</TargetFrameworks>
-    <Version>0.0.2-beta</Version>
-    <Description>Ramon de Klein's extensions for Application Insights</Description>
+    <OutputType>exe</OutputType>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp1.1;net45</TargetFrameworks>
+    <ApplicationIcon />
+    <StartupObject />
+    <Version>0.0.2</Version>
+    <Description>Demo for Ramon de Klein's extensions for Application Insights</Description>
     <Product>RamonDeKlein.AI</Product>
     <Company />
     <Authors>Ramon de Klein &lt;mail@ramondeklein.nl&gt;</Authors>
     <PackageProjectUrl>https://github.com/ramondeklein/application-insights</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ramondeklein/application-insights</RepositoryUrl>
     <Copyright>Copyright 2017 Ramon de Klein &lt;mail@ramondeklein.nl&gt;</Copyright>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <OutputTypeEx>exe</OutputTypeEx>
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="ApplicationInsights.config" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.4.0-beta2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RamonDeKlein.AI\RamonDeKlein.AI.csproj" />
   </ItemGroup>
 
 </Project>
