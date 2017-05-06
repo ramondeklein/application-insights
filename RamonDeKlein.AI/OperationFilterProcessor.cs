@@ -6,6 +6,10 @@ using Microsoft.ApplicationInsights.Extensibility;
 
 namespace RamonDeKlein.AI
 {
+    /// <summary>
+    /// This class implement a <seealso cref="ITelemetryProcessor"/> to remove
+    /// all excessive telemetry for successful requests.
+    /// </summary>
     public class OperationFilterProcessor : ITelemetryProcessor
     {
         private readonly ITelemetryProcessor _next;
@@ -66,9 +70,8 @@ namespace RamonDeKlein.AI
         /// The telemetry item.
         /// </param>
         /// <returns>
-        /// <see cref="bool.True"/> if the telemetry item should be forwarded
-        /// directly or <see cref="bool.False"/> if the telemetry item should
-        /// be hold back or discarded.
+        /// <c>True</c>> if the telemetry item should be forwarded directly or
+        /// <c>False</c> if the telemetry item should be hold back or discarded.
         /// </returns>
         private bool AlwaysForwarded(ITelemetry item)
         {
