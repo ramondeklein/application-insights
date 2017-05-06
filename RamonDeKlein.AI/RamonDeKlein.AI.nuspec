@@ -7,7 +7,7 @@
     <authors>Ramon de Klein &lt;mail@ramondeklein.nl&gt;</authors>
     <description>RamonDeKlein.AI is a set of AI extensions.</description>
     <licenseUrl>http://www.gnu.org/licenses/lgpl.html</licenseUrl>
-    <projectUrl>https://github.com/ramondeklein/ai</projectUrl>
+    <projectUrl>https://github.com/ramondeklein/application-insights</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <copyright>Copyright 2017 Ramon de Klein &lt;mail@ramondeklein.nl&gt;</copyright>
     <tags>C# .NET Azure ApplicationInsights AI</tags>
