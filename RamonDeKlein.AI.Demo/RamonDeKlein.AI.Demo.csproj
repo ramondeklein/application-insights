@@ -8,7 +8,7 @@
     <TargetFrameworks>netcoreapp1.1;net45</TargetFrameworks>
     <ApplicationIcon />
     <StartupObject />
-    <Version>0.0.2</Version>
+    <Version>1.0.0</Version>
     <Description>Demo for Ramon de Klein's extensions for Application Insights</Description>
     <Product>RamonDeKlein.AI</Product>
     <Company />
