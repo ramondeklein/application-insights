@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata>
     <id>RamonDeKlein.AI</id>
-    <version>0.0.2.0</version>
+    <version>1.1.0.0</version>
     <title>Ramon de Klein's Application Insights extensions</title>
     <authors>Ramon de Klein &lt;mail@ramondeklein.nl&gt;</authors>
     <description>RamonDeKlein.AI is a set of AI extensions.</description>
