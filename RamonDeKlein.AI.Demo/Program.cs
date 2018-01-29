@@ -37,7 +37,7 @@ namespace RamonDeKlein.AI.Demo
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             // !!! REPLACE WITH YOUR OWN INSTRUMENTATION KEY !!!
             // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            telemetryConfiguration.InstrumentationKey = /*"00000000-0000-0000-0000-000000000000"*/;
+            telemetryConfiguration.InstrumentationKey = "00000000-0000-0000-0000-000000000000";
 
             // Add the telemetry initializers that links telemetry to
             // the current operation.
@@ -50,6 +50,7 @@ namespace RamonDeKlein.AI.Demo
                     AlwaysLogExceptions = true,
                     AlwaysLogFailedDependencies = true,
                     AlwaysTraceDependencyWithDuration = TimeSpan.FromMilliseconds(250),
+                    AlwaysLogOperations = { "MyAmazingOperation", "AnotherAmazingOperation" },
                     MinAlwaysTraceLevel = SeverityLevel.Warning,
                     IncludeOperationLessTelemetry = true
                 })
@@ -77,7 +78,7 @@ namespace RamonDeKlein.AI.Demo
                 try
                 {
                     // Do some verbose logging
-                    TelemetryClient.TrackTrace($"Staring operation with index #{taskIndex}", SeverityLevel.Verbose);
+                    TelemetryClient.TrackTrace($"Starting operation with index #{taskIndex}", SeverityLevel.Verbose);
 
                     // Start a (dummy) operation
                     await RunDummyOperation(taskIndex);

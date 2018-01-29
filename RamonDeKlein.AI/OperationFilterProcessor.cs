@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -14,6 +17,7 @@ namespace RamonDeKlein.AI
     {
         private readonly ITelemetryProcessor _next;
 		private readonly ConcurrentDictionary<string, ConcurrentQueue<ITelemetry>> _operations;
+        private readonly ConcurrentDictionary<string, DateTime> _disposedOperations;
 
         /// <summary>
         /// Gets or sets a value flag indicates whether all exceptions should be
@@ -47,6 +51,28 @@ namespace RamonDeKlein.AI
         public bool IncludeOperationLessTelemetry { get; set; } = true;
 
         /// <summary>
+        /// Gets or sets a flag that throws an error if telemetry is sent for operation
+        /// that have already completed. This might result in memory leaks.
+        /// </summary>
+        /// <remarks>
+        /// This flag should <b>NEVER</b> be set in production environments, because it
+        /// will keep track of all previous operation identifiers, so it will create a
+        /// memory leak on its own. It's just a helper to allow you to detect problems.
+        /// </remarks>
+        public bool DebugThrowOnDisposedOperations { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the string that contains a semi-colon seperated list of operations
+        /// that should always be logged.
+        /// </summary>
+        /// <remarks>
+        /// You can use regular expressions with the following syntax: <c>/^CMD:.*</c> to
+        /// match all operations that start with "CMD:". Matching operations is not case
+        /// sensitive.
+        /// </remarks>
+        public ICollection<string> AlwaysLogOperations { get; } = new List<string>();
+
+        /// <summary>
         /// Constructor to create the processor.
         /// </summary>
         /// <param name="next">
@@ -60,6 +86,7 @@ namespace RamonDeKlein.AI
         {
             _next = next;
             _operations = new ConcurrentDictionary<string, ConcurrentQueue<ITelemetry>>();
+            _disposedOperations = new ConcurrentDictionary<string, DateTime>();
         }
 
         /// <summary>
@@ -76,13 +103,12 @@ namespace RamonDeKlein.AI
         private bool AlwaysForwarded(ITelemetry item)
         {
 			// Check if we need to log all exceptions
-            var exception = item as ExceptionTelemetry;
-            if (AlwaysLogExceptions && exception != null)
+            if (AlwaysLogExceptions && item is ExceptionTelemetry)
                 return true;
 
 			// Check if we need to log failed dependencies
             var dependency = item as DependencyTelemetry;
-            if (AlwaysLogFailedDependencies && dependency != null && dependency.Success.HasValue && !dependency.Success.Value)
+            if (AlwaysLogFailedDependencies && dependency?.Success != null && !dependency.Success.Value)
                 return true;
 
             // Check if we need to log slow dependencies
@@ -90,8 +116,7 @@ namespace RamonDeKlein.AI
                 return true;
 
             // Check if we need to log traces (based on the severity level)
-            var trace = item as TraceTelemetry;
-            if (trace != null && trace.SeverityLevel.HasValue && trace.SeverityLevel.Value >= MinAlwaysTraceLevel)
+            if (item is TraceTelemetry trace && trace.SeverityLevel.HasValue && trace.SeverityLevel.Value >= MinAlwaysTraceLevel)
                 return true;
 
 			// The event might might be kept until later
@@ -116,7 +141,7 @@ namespace RamonDeKlein.AI
 
             // Obtain the operation identifier
             var operationId = item.Context.Operation?.Id;
-            if (operationId == null)
+            if (string.IsNullOrEmpty(operationId))
             {
 				// No operation identifier
                 if (IncludeOperationLessTelemetry)
@@ -125,28 +150,57 @@ namespace RamonDeKlein.AI
             }
 
             // All operations are started via a request
-            var request = item as RequestTelemetry;
-            if (request != null)
+            if (item is RequestTelemetry request)
             {
 				// Obtain (and remove) the telemetries for this operation
-                var foundOperation = _operations.TryRemove(operationId, out ConcurrentQueue<ITelemetry> telemetries);
-
-                // Send all the logging for the operation if the operation failed
-                if (foundOperation && request.Success.HasValue && !request.Success.Value)
+                if (_operations.TryRemove(operationId, out var telemetries))
                 {
-                    ITelemetry telemetry;
-                    while (telemetries.TryDequeue(out telemetry))
-                        _next.Process(telemetry);
+                    // Send all the logging for the operation if the operation failed
+                    if ((request.Success.HasValue && !request.Success.Value) || AlwaysLogOperations.Any(on => MatchOperation(request.Name, on)))
+                    {
+                        while (telemetries.TryDequeue(out var telemetry))
+                            _next.Process(telemetry);
+                    }
+
+                    // Add the operation to the list of disposed operations
+                    if (DebugThrowOnDisposedOperations)
+                        _disposedOperations.TryAdd(operationId, DateTime.UtcNow);
+
                 }
 
-				// Always send the request itself
+                // Always send the request itself
                 _next.Process(item);
             }
             else
             {
-                var telemetries = _operations.GetOrAdd(operationId, key => new ConcurrentQueue<ITelemetry>());
+                var telemetries = _operations.GetOrAdd(operationId, key =>
+                {
+                    if (DebugThrowOnDisposedOperations && this._disposedOperations.TryGetValue(operationId, out var insertDate))
+                    {
+                        var disposedOperationExc = new InvalidOperationException($"Operation '{operationId}' was already completed at {insertDate:O} (UTC). Telemetry {item} cannot be queued.");
+                        var errorTelemetry = new ExceptionTelemetry(disposedOperationExc)
+                        {
+                            Timestamp = item.Timestamp,
+                            SeverityLevel = SeverityLevel.Error
+                        };
+                        _next.Process(errorTelemetry);
+                        throw disposedOperationExc;
+                    }
+
+                    return new ConcurrentQueue<ITelemetry>();
+                });
                 telemetries.Enqueue(item);
             }
+        }
+
+        private static bool MatchOperation(string operationName, string filterName)
+        {
+            // Check for an exact match
+            if (operationName.Equals(filterName, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            // Check for a match using regular expressions
+            return filterName.Length > 0 && filterName[0] == '/' && Regex.IsMatch(operationName, filterName, RegexOptions.IgnoreCase);
         }
     }
 }
