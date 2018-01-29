@@ -200,7 +200,7 @@ namespace RamonDeKlein.AI
                 return true;
 
             // Check for a match using regular expressions
-            return filterName.Length > 0 && filterName[0] == '/' && Regex.IsMatch(operationName, filterName, RegexOptions.IgnoreCase);
+            return filterName.Length > 0 && filterName[0] == '/' && Regex.IsMatch(operationName, filterName.Substring(1), RegexOptions.IgnoreCase);
         }
     }
 }
